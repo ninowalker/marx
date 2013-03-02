@@ -7,5 +7,4 @@ Framework/tools for python that get work done, make code easy to test, and turn 
 Example
 -------
 
-    meow
-    
+    %(two_step.py)s
