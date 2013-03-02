@@ -59,7 +59,7 @@ class Step(object):
         self.result_mapper(result, context)
 
     def default_result_mapper(self, result, context, mapping):
-        for to_key, from_mapper in mapping.iteritems():
+        for from_mapper, to_key in mapping.iteritems():
             if callable(from_mapper):
                 value = from_mapper(result, context)
             elif isinstance(from_mapper, basestring):

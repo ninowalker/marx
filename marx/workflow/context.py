@@ -46,8 +46,7 @@ class DefaultContext(object):
     
     message = Field()
     
-    def __init__(self, message, workflow=None):
-        self.message = message
+    def __init__(self, workflow=None):
         self.workflow = workflow
         self._replies = []
         

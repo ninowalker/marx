@@ -6,14 +6,15 @@ Created on Feb 23, 2013
 import unittest
 from mock import Mock, patch
 from marx.workflow.step import Step, LogicUnit, ArgSpec
-from marx.workflow.flow import DefaultContext
 import nose.tools
+from tests.workflow.example_1 import run as run_example_1
+from marx.workflow.context import DefaultContext
 
 
 class Test(unittest.TestCase):
     def test_call_context(self):
         m = Mock()
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m)(ctx)
@@ -32,10 +33,11 @@ class Test(unittest.TestCase):
     def test_result_mapper_str(self):
         m = Mock()
         m.return_value = {'returned': 'bar'}
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
+        ctx.baz = None
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, result_map={'baz': 'returned'})(ctx)
+            Step(m, result_map={'returned': 'baz'})(ctx)
             
         assert m.called
         assert ctx.baz == 'bar'
@@ -43,14 +45,15 @@ class Test(unittest.TestCase):
     def test_result_mapper_callable(self):
         m = Mock()
         m.return_value = {'returned': ['abc', 'bar']}
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
+        ctx.baz = None
         
         def reverse_and_join(result, context):
             return "".join(result['returned'])[::-1]
         
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, result_map={'baz': reverse_and_join})(ctx)
+            Step(m, result_map={reverse_and_join: 'baz'})(ctx)
             
         assert m.called
         assert ctx.baz == 'rabcba'
@@ -58,13 +61,16 @@ class Test(unittest.TestCase):
     def test_result_mapper_list(self):
         m = Mock()
         m.return_value = {'returned': {'bar': 1, 'boz': 2}}
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
+        ctx.baz = ctx.boz = None
+        
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, result_map={'baz': ['returned', 'bar'],
-                                'boz': ['returned', 'boz']})(ctx)
+            Step(m, result_map={('returned', 'bar'): 'baz',
+                                ('returned', 'boz'): 'boz'})(ctx)
             
         assert m.called
+        print ctx.__dict__
         assert ctx.baz == 1
         assert ctx.boz == 2
         
@@ -72,7 +78,7 @@ class Test(unittest.TestCase):
         m = Mock()
         m.return_value = {'returned': 'bar'}
         m_rm = Mock()
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, result_map=m_rm)(ctx)
@@ -84,7 +90,7 @@ class Test(unittest.TestCase):
     def test_extra_kwargs(self):
         m = Mock()
         m.return_value = {'returned': 'bar'}
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, extra_kwargs=dict(meow=True))(ctx)
@@ -94,7 +100,10 @@ class Test(unittest.TestCase):
 
     def test_context_mapper(self):
         m = Mock()
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
+        ctx.message = 1
+        ctx.meow = 1
+        
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, context_map={'message': 'message'})(ctx)
@@ -107,7 +116,7 @@ class Test(unittest.TestCase):
     def test_context_mapper_custom(self):
         m = Mock()
         m_cm = Mock(return_value={'moo': True})
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, context_map=m_cm)(ctx)
@@ -117,7 +126,7 @@ class Test(unittest.TestCase):
 
     def test_callable_by_str(self):
         m = Mock()
-        ctx = DefaultContext(1)
+        ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step('%s.a_callable' % __name__)(ctx)
@@ -162,6 +171,20 @@ class TestLogicUnit(unittest.TestCase):
                 
         s = Step(IsSameDomainUser(), context_map={'actor': IsSameDomainUser.USER, 
                                                   'domain': IsSameDomainUser.DOMAIN})
+        
+        class Context(DefaultContext):
+            domain = Domain()
+            actor = 1
+        
         assert s
         assert isinstance(s._call, IsSameDomainUser)
+        with nose.tools.assert_raises(TypeError):
+            s(Context())
+        
+class TestFlow(unittest.TestCase):
+    def test_run_example_1(self):
+        #import pdb; pdb.set_trace()
+        ctx = run_example_1()
+        assert ctx
+    
         

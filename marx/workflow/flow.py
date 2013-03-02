@@ -4,24 +4,21 @@ Created on Feb 23, 2013
 @author: nino
 '''
 from marx.workflow.exceptions import Abort
-from marx.workflow.context import DefaultContext
 import sys
 
 class Workflow(object):
     def __init__(self, 
                  steps, 
-                 context_cls=DefaultContext,
                  on_error=None, 
                  on_abort=None,
                  on_reply=None):
         self.steps = steps
-        self.context_cls = context_cls
         self.on_error = on_error or self.default_on_error
         self.on_abort = on_abort or self.default_on_abort
         self.reply = on_reply or self.default_on_reply
         
-    def __call__(self, message):
-        context = self.context_cls(message, workflow=self)
+    def __call__(self, context):
+        context.workflow = self
         try:
             for step in self.steps:
                 try:

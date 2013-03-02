@@ -14,8 +14,11 @@ def read(fname):
 
 def hydrate_examples():
     examples = {}
-    for f in glob.glob(local('examples/*')):
+    for f in glob.glob(local('examples/*')) + glob.glob(local('tests/*')) + glob.glob(local('tests/*/*')):
+        if os.path.isdir(f):
+            continue
         examples[os.path.basename(f)] = "\n    ".join(read(f).split("\n"))
+    print examples.keys()
     readme = read(README +".in") % examples
     with open(local(README), "w") as f:
         f.write(readme)

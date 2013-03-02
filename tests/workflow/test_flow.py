@@ -8,6 +8,7 @@ from marx.workflow.flow import Workflow
 from marx.workflow.exceptions import Abort
 import nose.tools
 from mock import Mock
+from marx.workflow.context import DefaultContext
 
 
 class TestAbort(unittest.TestCase):
@@ -28,14 +29,14 @@ class TestAbort(unittest.TestCase):
     
         # test unaborted workflow 
         w = Workflow(steps=[abort_if_not_none, m])
-        w(None)
+        w(DefaultContext())
         assert m.called
         
         # test simple aborted workflow
         m.reset_mock()
         self.x = 1
         w = Workflow(steps=[abort_if_not_none, m])
-        w(None)
+        w(DefaultContext())
         assert not m.called
 
         # test mid workflow abort
@@ -45,7 +46,7 @@ class TestAbort(unittest.TestCase):
                             lambda context: assign(True),
                             abort_if_not_none, 
                             m])
-        w(None)
+        w(DefaultContext())
         assert self.x is True
         assert not m.called
 
@@ -56,7 +57,7 @@ class TestAbort(unittest.TestCase):
         self.x = 1
         w = Workflow(steps=[self.abort_if_not_none, m],
                      on_abort=m_a)
-        w(None)
+        w(DefaultContext())
         assert not m.called
         assert m_a.called
         
@@ -73,7 +74,7 @@ class TestAbort(unittest.TestCase):
         w = Workflow(steps=[abort_if_not_none, reply, reply,
                             lambda context: assign(True),
                             abort_if_not_none, reply])
-        ctx = w(None)
+        ctx = w(DefaultContext())
         assert ctx.replies == [1, 1]
         
 class TestOnError(unittest.TestCase):
@@ -82,13 +83,13 @@ class TestOnError(unittest.TestCase):
 
         w = Workflow(steps=[m])
         with nose.tools.assert_raises(ValueError): #@UndefinedVariable
-            w(None)
+            w(DefaultContext())
 
     def test_custom_on_error(self):
         m = Mock(side_effect=ValueError)
         m_f = Mock(return_value=1)
         w = Workflow(steps=[m], on_error=m_f)
-        r = w(None)
+        r = w(DefaultContext())
         assert m.called
         assert m_f.called
         assert r == 1
