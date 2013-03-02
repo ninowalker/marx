@@ -7,40 +7,67 @@ Framework/tools for python that get work done, make code easy to test, and turn 
 Example
 -------
 
-    '''
-    Created on Feb 24, 2013
-    
-    @author: nino
-    '''
-    import unittest
+    from marx.workflow.step import LogicUnit, ArgSpec, Step
+    from marx.workflow.flow import Workflow
     from marx.workflow.context import DefaultContext, Field
-    from marx.workflow.exceptions import InvalidContextAssignment
-    import nose.tools
     
     
-    class TestField(unittest.TestCase):
-        def test1(self):
-            class Context(DefaultContext):
-                user = Field([int])
-                str_or_float = Field([str, float])
-                
-            assert hasattr(Context, 'USER')
-            assert Context.USER == 'user'
-            assert hasattr(Context, 'user')
-            c = Context(None)
-            c.user = 1
-            c.str_or_float = "s"
-            c.str_or_float = 1.
-            assert c.user == 1
-            with nose.tools.assert_raises(InvalidContextAssignment): #@UndefinedVariable
-                c.user = "s"
-            
-            with nose.tools.assert_raises(InvalidContextAssignment): #@UndefinedVariable
-                c.str_or_float = 1
+    class User(object):
+        def is_authorized(self, action): return True
+        def can_throw(self): return False
     
-            # check that we haven't corrupted the class        
-            c2 = Context(None)
-            assert c2.user is None
+    class IsUserAuthorized(LogicUnit):
+        user = ArgSpec([User])
         
-        def test_contribute_to_class(self):
-            pass
+        def __init__(self, action):
+            self.action = action
+        
+        def __call__(self, user):
+            if user.is_authorized(self.action):
+                return
+            self.notify_authorities(user, self.action)
+            raise PermissionDeniedError(self.action)
+        
+        def notify_authorities(self, user, action):
+            print "AUTHORITIES!!!"
+    
+    class MakePie(LogicUnit):
+        def __call__(self, maker):
+            return {'pie': 'lemon'}
+    
+    class ThrowPie(LogicUnit):
+        def __call__(self, target, pie, actor):
+            print "Yummy", pie
+            return {'hit': actor.can_throw()} 
+    
+    class ThrowPieContext(DefaultContext):
+        thrower = Field([User])
+        target = Field([User])
+        pie = Field([str])
+        was_hit = Field([bool])
+    
+    ThrowPieWorkflow = Workflow(
+        steps=[Step(IsUserAuthorized("throw_pie"),
+                    context_map={ThrowPieContext.THROWER: IsUserAuthorized.USER}),
+               Step(MakePie(),
+                    context_map={ThrowPieContext.THROWER: MakePie.MAKER},
+                    result_map={'pie': ThrowPieContext.PIE}),
+               Step(ThrowPie(),
+                    context_map={ThrowPieContext.THROWER: ThrowPie.ACTOR,
+                                 ThrowPieContext.TARGET: ThrowPie.TARGET,
+                                 ThrowPieContext.PIE: ThrowPie.PIE},
+                    result_map={'hit': ThrowPieContext.WAS_HIT})
+               ]
+    )
+            
+    class PermissionDeniedError(Exception):
+        pass
+    
+    
+    def run():
+        ctx = ThrowPieContext(None)
+        ctx.thrower = User()
+        ctx.target = User()
+        
+        ThrowPieWorkflow(ctx)
+        return ctx
