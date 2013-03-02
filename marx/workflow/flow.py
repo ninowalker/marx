@@ -3,36 +3,25 @@ Created on Feb 23, 2013
 
 @author: nino
 '''
-from drone.workflow.exceptions import Abort
-
-
-class DefaultContext(object):
-    def __init__(self, message):
-        self.message = message
-        self._replies = []
-        
-    def reply(self, message):
-        self._replies.append(message)
-        
-    @property
-    def replies(self):
-        """Returns a copy of the replies."""
-        return [] + self._replies
-
+from marx.workflow.exceptions import Abort
+from marx.workflow.context import DefaultContext
+import sys
 
 class Workflow(object):
     def __init__(self, 
                  steps, 
                  context_cls=DefaultContext,
                  on_error=None, 
-                 on_abort=None):
+                 on_abort=None,
+                 on_reply=None):
         self.steps = steps
         self.context_cls = context_cls
         self.on_error = on_error or self.default_on_error
         self.on_abort = on_abort or self.default_on_abort
+        self.reply = on_reply or self.default_on_reply
         
     def __call__(self, message):
-        context = self.context_cls(message)
+        context = self.context_cls(message, workflow=self)
         try:
             for step in self.steps:
                 try:
@@ -45,7 +34,10 @@ class Workflow(object):
             return self.on_error(e, context)
                 
     def default_on_error(self, e, context):
-        raise e
+        raise type(e), e.message, sys.exc_info()[2]
     
     def default_on_abort(self, context):
+        pass
+    
+    def default_on_reply(self, reply, context):
         pass

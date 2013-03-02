@@ -5,8 +5,9 @@ Created on Feb 23, 2013
 '''
 import unittest
 from mock import Mock, patch
-from drone.workflow.step import Step
-from drone.workflow.flow import DefaultContext
+from marx.workflow.step import Step, LogicUnit, ArgSpec
+from marx.workflow.flow import DefaultContext
+import nose.tools
 
 
 class Test(unittest.TestCase):
@@ -125,3 +126,42 @@ class Test(unittest.TestCase):
 
 # don't change this name, test above depends on it. 
 a_callable = Mock()
+
+
+class TestLogicUnit(unittest.TestCase):
+    def test_args(self):
+        this = self
+        class Unit(LogicUnit):
+            astr = ArgSpec([str], docs="A string value")
+            
+            def __call__(self, an_arg, astr="s"):
+                this.value = an_arg
+        
+        assert Unit.AN_ARG == "an_arg"
+        assert Unit.ASTR == "astr"
+        
+        u = Unit()
+        # this is fine:
+        u(an_arg=1, astr="grr")
+        assert self.value == 1
+        
+        # this should fail type checking
+        nose.tools.assert_raises(TypeError, u, an_arg=1, astr=1) #@UndefinedVariable
+        
+    def test_composition(self):
+        class Domain(object): pass
+        class UserProfile(object): pass
+        
+        class IsSameDomainUser(LogicUnit):
+            domain = ArgSpec([Domain])
+            user = ArgSpec([UserProfile])
+            
+            def __call__(self, user, domain):
+                if not user.domain_id == domain.id:
+                    raise Exception()
+                
+        s = Step(IsSameDomainUser(), context_map={'actor': IsSameDomainUser.USER, 
+                                                  'domain': IsSameDomainUser.DOMAIN})
+        assert s
+        assert isinstance(s._call, IsSameDomainUser)
+        

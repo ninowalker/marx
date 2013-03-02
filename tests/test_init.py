@@ -4,7 +4,7 @@ Created on Feb 23, 2013
 @author: nino
 '''
 import unittest
-from drone import __version__
+from marx import __version__
 from distutils.version import StrictVersion
 
 

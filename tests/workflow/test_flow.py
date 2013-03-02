@@ -4,8 +4,8 @@ Created on Feb 23, 2013
 @author: nino
 '''
 import unittest
-from drone.workflow.flow import Workflow
-from drone.workflow.exceptions import Abort
+from marx.workflow.flow import Workflow
+from marx.workflow.exceptions import Abort
 import nose.tools
 from mock import Mock
 

@@ -10,4 +10,5 @@ class WorkflowException(Exception):
 class Abort(WorkflowException):
     pass
 
-
+class InvalidContextAssignment(WorkflowException):
+    pass
