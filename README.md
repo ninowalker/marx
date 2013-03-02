@@ -13,16 +13,15 @@ Example
 
 You'll find the [full example](./tests/workflow/example_1.py) in the tests/ directory.
 
-    # found in tests/workflow/example_1.py
     """
     This defines a workflow around the imperative: "Throw a Pie".
     
     In a simple system this is about 5 lines of code. But in others,
     where business logic requires the interaction of many systems,
-    logic is smeared around.
+    logic is smeared around and duplicated, and not well encapsulated.
     
-    Instead the code is split in to logic units which can be composed into 
-    other workflows.
+    The approach here splits execution into discrete units which can be 
+    composed into other workflows encouraging reuse, testability, etc.
     """
     
     

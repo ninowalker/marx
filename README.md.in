@@ -13,5 +13,4 @@ Example
 
 You'll find the [full example](./tests/workflow/example_1.py) in the tests/ directory.
 
-    # found in tests/workflow/example_1.py
     %(example_1.py)s

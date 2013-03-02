@@ -3,10 +3,10 @@ This defines a workflow around the imperative: "Throw a Pie".
 
 In a simple system this is about 5 lines of code. But in others,
 where business logic requires the interaction of many systems,
-logic is smeared around.
+logic is smeared around and duplicated, and not well encapsulated.
 
-Instead the code is split in to logic units which can be composed into 
-other workflows.
+The approach here splits execution into discrete units which can be 
+composed into other workflows encouraging reuse, testability, etc.
 """
 
 
@@ -62,17 +62,17 @@ class ThrowThing(LogicUnit):
     # need to enumerate/type constrain the values in this example
     
     def __call__(self, actor, thing, target):
+        actor.increment("things_throw")
         print "Throwing", thing
         return {'hit': actor.can_throw()} 
 
 
 class ThrowPieContext(DefaultContext):
-    """The execution context for the ThrowPieWorkflow.
-    It defines the execution context for workflow.""" 
-    thrower = Field([User])
-    target = Field([User])
-    pie = Field([str])
-    was_hit = Field([bool])
+    """The execution context for the ThrowPieWorkflow.""" 
+    thrower = Field([User], docs="Somebody has to throw it")
+    target = Field([User], docs="At somebody")
+    pie = Field([str], docs="A pie, which we make along the way")
+    was_hit = Field([bool], docs="Success of the throwing event")
 
 """ A workflow is a series of steps."""
 ThrowPieWorkflow = Workflow(
