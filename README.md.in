@@ -1,10 +1,17 @@
 marx
 =====
 
-Framework/tools for python that get work done, make code easy to test, and turn spaghetti code back into something you can love.
+Framework/tools for python that get work done, make code easy to test, 
+and turn spaghetti logic back into something you can love.
+
+The modeling here provides clear contracts, state encapsulation,
+and strict typing.
 
 
 Example
 -------
 
+You'll find the [full example](./tests/workflow/example_1.py) in the tests/ directory.
+
+    # found in tests/workflow/example_1.py
     %(example_1.py)s
