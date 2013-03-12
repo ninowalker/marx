@@ -141,7 +141,7 @@ class TestLogicUnit(unittest.TestCase):
     def test_args(self):
         this = self
         class Unit(LogicUnit):
-            astr = ArgSpec([str], docs="A string value")
+            astr = ArgSpec(str, docs="A string value")
             
             def __call__(self, an_arg, astr="s"):
                 this.value = an_arg
@@ -162,8 +162,8 @@ class TestLogicUnit(unittest.TestCase):
         class UserProfile(object): pass
         
         class IsSameDomainUser(LogicUnit):
-            domain = ArgSpec([Domain])
-            user = ArgSpec([UserProfile])
+            domain = ArgSpec(Domain)
+            user = ArgSpec(UserProfile)
             
             def __call__(self, user, domain):
                 if not user.domain_id == domain.id:

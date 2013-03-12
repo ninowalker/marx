@@ -100,11 +100,12 @@ class LogicUnitBase(type):
 
 
 class ArgSpec(object):
-    def __init__(self, types=None, docs=None):
+    def __init__(self, *types, **kwargs):
         assert isinstance(types, (list, tuple))
         self.types = types if not types else tuple(types)
+        isinstance(None, self.types)
         self.name = None
-        self.docs = docs
+        self.docs = kwargs.pop('docs', None)
                 
     def contribute_to_class(self, cls, name):
         call = getattr(cls, '__call__')

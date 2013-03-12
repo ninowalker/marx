@@ -6,12 +6,10 @@ Created on Feb 24, 2013
 from marx.workflow.exceptions import InvalidContextAssignment
 
 class Field(object):
-    def __init__(self, types=None, docs=None):
-        if types:
-            assert isinstance(types, (list, tuple))
+    def __init__(self, *types, **kwargs):
         self.types = types if not types else tuple(types)
         self.name = None
-        self.docs = docs
+        self.docs = kwargs.pop('docs', None)
         
     def _get(self, instance):
         return getattr(instance, "_" + self.name, None)

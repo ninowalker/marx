@@ -35,7 +35,7 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
         """Checks permission for a user+action, and notifies authorities
         if it fails."""
         
-        user = ArgSpec([User], docs="The user performing the action")
+        user = ArgSpec(User, docs="The user performing the action")
         
         def __init__(self, action):
             """
@@ -62,7 +62,7 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
     class MakePie(LogicUnit):
         """Makes the pie."""
         
-        maker = ArgSpec([User], docs="The person making pie.")
+        maker = ArgSpec(User, docs="The person making pie.")
         
         def __call__(self, maker):
             maker.increment("pies_made", 1)
@@ -71,7 +71,7 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
     class ThrowThing(LogicUnit):
         """Subject Object (Verb) Indirect-object"""
         
-        actor = ArgSpec([User])
+        actor = ArgSpec(User)
         
         # we omit target and thing here, because we don't
         # need to enumerate/type constrain the values in this example
@@ -84,28 +84,26 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
     
     class ThrowPieContext(DefaultContext):
         """The execution context for the ThrowPieWorkflow.""" 
-        thrower = Field([User], docs="Somebody has to throw it")
-        target = Field([User], docs="At somebody")
-        pie = Field([str], docs="A pie, which we make along the way")
-        was_hit = Field([bool], docs="Success of the throwing event")
+        thrower = Field(User, docs="Somebody has to throw it")
+        target = Field(User, docs="At somebody")
+        pie = Field(str, docs="A pie, which we make along the way")
+        was_hit = Field(bool, docs="Success of the throwing event")
     
     """ A workflow is a series of steps."""
-    ThrowPieWorkflow = Workflow(
-        steps=[Step(IsUserAuthorized("throw_pie"),
-                    # we bind from the context to the arguments of the method.
-                    arg_map={IsUserAuthorized.USER: ThrowPieContext.THROWER}),
-               Step(MakePie(),
-                    arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
-                    # we bind from the returned result back to the context
-                    result_map={ThrowPieContext.PIE: 'pie'}),
-               Step(ThrowThing(),
-                    arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
-                                 ThrowThing.TARGET: ThrowPieContext.TARGET,
-                                 ThrowThing.THING: ThrowPieContext.PIE},
-                    result_map={ThrowPieContext.WAS_HIT: 'hit'})
-               ]
-    )
-            
+    ThrowPieWorkflow = Workflow()
+    
+    ThrowPieWorkflow.add_step(IsUserAuthorized("throw_pie"),
+                              # we bind from the context to the arguments of the method.
+                              arg_map={IsUserAuthorized.USER: ThrowPieContext.THROWER})
+    ThrowPieWorkflow.add_step(MakePie(),
+                              arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
+                              # we bind from the returned result back to the context
+                              result_map={ThrowPieContext.PIE: 'pie'})
+    ThrowPieWorkflow.add_step(ThrowThing(),
+                              arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
+                                       ThrowThing.TARGET: ThrowPieContext.TARGET,
+                                       ThrowThing.THING: ThrowPieContext.PIE},
+                              result_map={ThrowPieContext.WAS_HIT: 'hit'})
     
     def run():
         """To execute a workflow, prepare a context, and pass it through."""
@@ -115,6 +113,7 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
         try:
             ThrowPieWorkflow(ctx)
             assert ctx.was_hit is not None
+            assert ctx.pie == 'lemon'
             return ctx
         except PermissionDeniedError:
             assert False

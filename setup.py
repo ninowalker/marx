@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 from marx import __version__
 import glob
@@ -26,14 +26,14 @@ def hydrate_examples():
 hydrate_examples()
 
 setup(
-    name="celerybus",
+    name="marx",
     version=__version__,
     author="Nino Walker",
     author_email="nino.walker@gmail.com",
     description=read(README).split("\n", 1)[0],
     url='https://github.com/ninowalker/marx',
     license="BSD",
-    packages=['marx'],
+    packages=find_packages(exclude=["tests.*", "tests"]),
     long_description=read(README),
     setup_requires=['nose>=1.0', 'coverage==3.6', 'nosexcover', 'mock'],
     test_suite='nose.collector',

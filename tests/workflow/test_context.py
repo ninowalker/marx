@@ -12,8 +12,8 @@ import nose.tools
 class TestField(unittest.TestCase):
     def test1(self):
         class Context(DefaultContext):
-            user = Field([int])
-            str_or_float = Field([str, float])
+            user = Field(int)
+            str_or_float = Field(str, float)
             
         assert hasattr(Context, 'USER')
         assert Context.USER == 'user'
