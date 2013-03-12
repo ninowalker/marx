@@ -6,7 +6,7 @@ Created on Feb 23, 2013
 
 #PostCommentIsValidParent = Step(IsValidParent, 
 #   result_map={'context_parent': Mapping('parent', [Message], required=True, default=Ponies)}, 
-#   context_map={'collection_context': ('collectionContext', 
+#   arg_map={'collection_context': ('collectionContext', 
 #                                       [None, ContentSourceMeta])}), #@UndefinedVariable
 
 class Mapping(object):  

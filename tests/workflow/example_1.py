@@ -78,16 +78,16 @@ class ThrowPieContext(DefaultContext):
 ThrowPieWorkflow = Workflow(
     steps=[Step(IsUserAuthorized("throw_pie"),
                 # we bind from the context to the arguments of the method.
-                context_map={ThrowPieContext.THROWER: IsUserAuthorized.USER}),
+                arg_map={IsUserAuthorized.USER: ThrowPieContext.THROWER}),
            Step(MakePie(),
-                context_map={ThrowPieContext.THROWER: MakePie.MAKER},
+                arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
                 # we bind from the returned result back to the context
-                result_map={'pie': ThrowPieContext.PIE}),
+                result_map={ThrowPieContext.PIE: 'pie'}),
            Step(ThrowThing(),
-                context_map={ThrowPieContext.THROWER: ThrowThing.ACTOR,
-                             ThrowPieContext.TARGET: ThrowThing.TARGET,
-                             ThrowPieContext.PIE: ThrowThing.THING},
-                result_map={'hit': ThrowPieContext.WAS_HIT})
+                arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
+                             ThrowThing.TARGET: ThrowPieContext.TARGET,
+                             ThrowThing.THING: ThrowPieContext.PIE},
+                result_map={ThrowPieContext.WAS_HIT: 'hit'})
            ]
 )
         

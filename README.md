@@ -77,32 +77,32 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
         # need to enumerate/type constrain the values in this example
         
         def __call__(self, actor, thing, target):
+            actor.increment("things_throw")
             print "Throwing", thing
             return {'hit': actor.can_throw()} 
     
     
     class ThrowPieContext(DefaultContext):
-        """The execution context for the ThrowPieWorkflow.
-        It defines the execution context for workflow.""" 
-        thrower = Field([User])
-        target = Field([User])
-        pie = Field([str])
-        was_hit = Field([bool])
+        """The execution context for the ThrowPieWorkflow.""" 
+        thrower = Field([User], docs="Somebody has to throw it")
+        target = Field([User], docs="At somebody")
+        pie = Field([str], docs="A pie, which we make along the way")
+        was_hit = Field([bool], docs="Success of the throwing event")
     
     """ A workflow is a series of steps."""
     ThrowPieWorkflow = Workflow(
         steps=[Step(IsUserAuthorized("throw_pie"),
                     # we bind from the context to the arguments of the method.
-                    context_map={ThrowPieContext.THROWER: IsUserAuthorized.USER}),
+                    arg_map={IsUserAuthorized.USER: ThrowPieContext.THROWER}),
                Step(MakePie(),
-                    context_map={ThrowPieContext.THROWER: MakePie.MAKER},
+                    arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
                     # we bind from the returned result back to the context
-                    result_map={'pie': ThrowPieContext.PIE}),
+                    result_map={ThrowPieContext.PIE: 'pie'}),
                Step(ThrowThing(),
-                    context_map={ThrowPieContext.THROWER: ThrowThing.ACTOR,
-                                 ThrowPieContext.TARGET: ThrowThing.TARGET,
-                                 ThrowPieContext.PIE: ThrowThing.THING},
-                    result_map={'hit': ThrowPieContext.WAS_HIT})
+                    arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
+                                 ThrowThing.TARGET: ThrowPieContext.TARGET,
+                                 ThrowThing.THING: ThrowPieContext.PIE},
+                    result_map={ThrowPieContext.WAS_HIT: 'hit'})
                ]
     )
             

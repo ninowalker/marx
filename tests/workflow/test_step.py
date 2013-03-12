@@ -37,7 +37,7 @@ class Test(unittest.TestCase):
         ctx.baz = None
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, result_map={'returned': 'baz'})(ctx)
+            Step(m, result_map={'baz': 'returned'})(ctx)
             
         assert m.called
         assert ctx.baz == 'bar'
@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
         
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, result_map={reverse_and_join: 'baz'})(ctx)
+            Step(m, result_map={'baz': reverse_and_join})(ctx)
             
         assert m.called
         assert ctx.baz == 'rabcba'
@@ -66,8 +66,8 @@ class Test(unittest.TestCase):
         
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, result_map={('returned', 'bar'): 'baz',
-                                ('returned', 'boz'): 'boz'})(ctx)
+            Step(m, result_map={'baz': ('returned', 'bar'),
+                                'boz': ('returned', 'boz')})(ctx)
             
         assert m.called
         print ctx.__dict__
@@ -98,7 +98,7 @@ class Test(unittest.TestCase):
         assert m.called
         m.assert_called_once_with(meow=True)
 
-    def test_context_mapper(self):
+    def test_arg_mapper(self):
         m = Mock()
         ctx = DefaultContext()
         ctx.message = 1
@@ -106,20 +106,20 @@ class Test(unittest.TestCase):
         
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, context_map={'message': 'message'})(ctx)
-            Step(m, context_map={'message': 'meow'})(ctx)
+            Step(m, arg_map={'message': 'message'})(ctx)
+            Step(m, arg_map={'meow': 'message'})(ctx)
             
         assert m.called
         m.assert_any_call(message=1)
         m.assert_any_call(meow=1)
 
-    def test_context_mapper_custom(self):
+    def test_arg_mapper_custom(self):
         m = Mock()
         m_cm = Mock(return_value={'moo': True})
         ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
-            Step(m, context_map=m_cm)(ctx)
+            Step(m, arg_map=m_cm)(ctx)
             
         assert m.called
         m.assert_called_once_with(**m_cm.return_value)
@@ -169,8 +169,8 @@ class TestLogicUnit(unittest.TestCase):
                 if not user.domain_id == domain.id:
                     raise Exception()
                 
-        s = Step(IsSameDomainUser(), context_map={'actor': IsSameDomainUser.USER, 
-                                                  'domain': IsSameDomainUser.DOMAIN})
+        s = Step(IsSameDomainUser(), arg_map={IsSameDomainUser.USER: 'actor', 
+                                              IsSameDomainUser.DOMAIN: 'domain'})
         
         class Context(DefaultContext):
             domain = Domain()

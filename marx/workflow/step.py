@@ -9,13 +9,13 @@ import functools
 class Step(object):
     def __init__(self, 
                  call, 
-                 context_map=None,
+                 arg_map=None,
                  result_map=None,
                  extra_kwargs=None,
                  docs=None):
         """
         @param call: A callable or a string that can be resolved to a callable.
-        @param context_map: A mapping from fields in the context to arguments of the callable.   
+        @param arg_map: A mapping from fields in the context to arguments of the callable.   
         @param result_map: A dict that defines translation from the returned object to the context.
         @param extra_kwargs: Additional kwargs to pass to the callable; useful for config at bind time.
         @param docs: A doc string. 
@@ -35,12 +35,12 @@ class Step(object):
         else:
             self.result_mapper = result_map
         
-        if context_map is None:
-            context_map = {}
-        if isinstance(context_map, dict):
-            self.context_mapper = functools.partial(self.default_context_mapper, mapping=context_map)
+        if arg_map is None:
+            arg_map = {}
+        if isinstance(arg_map, dict):
+            self.arg_mapper = functools.partial(self.default_arg_mapper, mapping=arg_map)
         else:
-            self.context_mapper = context_map
+            self.arg_mapper = arg_map
         
         self.extra_kwargs = extra_kwargs
         # figure out if the callable accepts context
@@ -52,14 +52,14 @@ class Step(object):
         kwargs = {}
         if self._pass_context:
             kwargs['context'] = context
-        kwargs.update(self.context_mapper(context))
+        kwargs.update(self.arg_mapper(context))
         if self.extra_kwargs:
             kwargs.update(self.extra_kwargs)
         result = self._call(**kwargs)
         self.result_mapper(result, context)
 
     def default_result_mapper(self, result, context, mapping):
-        for from_mapper, to_key in mapping.iteritems():
+        for to_key, from_mapper in mapping.iteritems():
             if callable(from_mapper):
                 value = from_mapper(result, context)
             elif isinstance(from_mapper, basestring):
@@ -70,9 +70,9 @@ class Step(object):
                     value = value[k]
             setattr(context, to_key, value)
             
-    def default_context_mapper(self, context, mapping):
+    def default_arg_mapper(self, context, mapping):
         kwargs = {}
-        for from_key, to_kwarg in mapping.iteritems():
+        for to_kwarg, from_key in mapping.iteritems():
             kwargs[to_kwarg] = getattr(context, from_key)
         return kwargs
     
@@ -98,6 +98,7 @@ class LogicUnitBase(type):
             spec.contribute_to_class(cls, arg)        
         return cls
 
+
 class ArgSpec(object):
     def __init__(self, types=None, docs=None):
         assert isinstance(types, (list, tuple))
@@ -110,7 +111,6 @@ class ArgSpec(object):
         setattr(cls, '__call__', self.check_input(name, call))
 
     def check_input(self_, name, func): #@NoSelf
-        #@functools.wraps
         def wrapper(self, **kwargs):
             if name not in kwargs:
                 raise KeyError(name)
@@ -119,8 +119,9 @@ class ArgSpec(object):
             return func(self, **kwargs)
         return wrapper
 
+
 class LogicUnit(object):
     __metaclass__ = LogicUnitBase
     
     def __call__(self):
-        abstract # @UndefinedVariable ~ this is a python guru move :)
+        abstract # @UndefinedVariable ~ this is a python guru move
