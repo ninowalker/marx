@@ -14,13 +14,14 @@ from marx.workflow.context import DefaultContext
 class Test(unittest.TestCase):
     def test_call_context(self):
         m = Mock()
+        m._accepts_context = True
         ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m)(ctx)
         
         assert m.called
-        m.assert_called_once_with()
+        m.assert_called_once_with(context=ctx)
         m.reset_mock()
 
         with patch('inspect.getargspec') as argspec:
@@ -89,6 +90,7 @@ class Test(unittest.TestCase):
 
     def test_extra_kwargs(self):
         m = Mock()
+        m._accepts_context = False
         m.return_value = {'returned': 'bar'}
         ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
@@ -100,6 +102,7 @@ class Test(unittest.TestCase):
 
     def test_arg_mapper(self):
         m = Mock()
+        m._accepts_context = False
         ctx = DefaultContext()
         ctx.message = 1
         ctx.meow = 1
@@ -115,6 +118,7 @@ class Test(unittest.TestCase):
 
     def test_arg_mapper_custom(self):
         m = Mock()
+        m._accepts_context = None
         m_cm = Mock(return_value={'moo': True})
         ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
@@ -143,7 +147,7 @@ class TestLogicUnit(unittest.TestCase):
         class Unit(LogicUnit):
             astr = ArgSpec(str, docs="A string value")
             
-            def __call__(self, an_arg, astr="s"):
+            def __call__(self, an_arg, astr="s", context=None):
                 this.value = an_arg
         
         assert Unit.AN_ARG == "an_arg"
@@ -153,6 +157,7 @@ class TestLogicUnit(unittest.TestCase):
         # this is fine:
         u(an_arg=1, astr="grr")
         assert self.value == 1
+        assert Unit._accepts_context
         
         # this should fail type checking
         nose.tools.assert_raises(TypeError, u, an_arg=1, astr=1) #@UndefinedVariable
@@ -169,6 +174,8 @@ class TestLogicUnit(unittest.TestCase):
                 if not user.domain_id == domain.id:
                     raise Exception()
                 
+        assert not IsSameDomainUser._accepts_context
+                
         s = Step(IsSameDomainUser(), arg_map={IsSameDomainUser.USER: 'actor', 
                                               IsSameDomainUser.DOMAIN: 'domain'})
         
@@ -178,8 +185,9 @@ class TestLogicUnit(unittest.TestCase):
         
         assert s
         assert isinstance(s._call, IsSameDomainUser)
-        with nose.tools.assert_raises(TypeError):
+        with nose.tools.assert_raises(TypeError): #@UndefinedVariable
             s(Context())
+            
         
 class TestFlow(unittest.TestCase):
     def test_run_example_1(self):

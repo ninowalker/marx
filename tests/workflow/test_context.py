@@ -35,3 +35,19 @@ class TestField(unittest.TestCase):
     
     def test_contribute_to_class(self):
         pass
+    
+    def test_multiple_inheritance(self):
+        class A(DefaultContext):
+            a = Field(int)
+            
+        class B(DefaultContext):
+            b = Field(str)
+            
+        class C(A, B):
+            c = Field(int)
+        
+        c = C()
+        for f in "abc":
+            assert hasattr(c, f)
+            
+        assert not hasattr(c, "d")

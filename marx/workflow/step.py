@@ -45,7 +45,10 @@ class Step(object):
         self.extra_kwargs = extra_kwargs
         # figure out if the callable accepts context
         # as a parameter as not to enforce a strict contract
-        self._pass_context = 'context' in inspect.getargspec(getattr(call, '__call__', call))[0]
+        pass_context = getattr(call, '_accepts_context', None)
+        if pass_context is None:
+            pass_context = 'context' in inspect.getargspec(getattr(call, '__call__', call))[0]
+        self._pass_context = pass_context
         self.docs = docs
         
     def __call__(self, context):
@@ -78,9 +81,10 @@ class Step(object):
     
 
 class LogicUnitBase(type):
+    """Provides the class-declare-time magic for a logical unit."""
     def __new__(cls, name, bases, attrs):
-        specs = [s for s in attrs.items() if isinstance(s[1], ArgSpec)]
-        attrs = dict(s for s in attrs.items() if not isinstance(s[1], ArgSpec))
+        specs = [s for s in attrs.items() if hasattr(s[1], 'contribute_to_class')]
+        attrs = dict(s for s in attrs.items() if not hasattr(s[1], 'contribute_to_class'))
         
         cls = super(LogicUnitBase, cls).__new__(cls, name, bases, attrs)
         call = attrs.get('__call__')
@@ -88,12 +92,19 @@ class LogicUnitBase(type):
             return cls
         
         args = inspect.getargspec(call)
+        
+        # add the constants representing each argument.
         for arg in args.args[1:]:
             setattr(cls, arg.upper(), arg)
         if args.keywords:
             setattr(cls, 'KWARGS', args.keywords)
         if args.varargs:
             setattr(cls, 'ARGS', args.varargs)
+        
+        # keep track of whether the invocation expects a context
+        setattr(cls, '_accepts_context', 'context' in args.args)
+
+        # let them contribute to the class 
         for arg, spec in specs:
             spec.contribute_to_class(cls, arg)        
         return cls
