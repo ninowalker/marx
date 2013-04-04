@@ -157,6 +157,7 @@ class LogicUnit(object):
             kwargs = dict(zip(spec.args[-(len(spec.defaults or [])):], spec.defaults or []))
             for arg in spec.args[1:]:
                 if arg == 'context':  # this is special
+                    kwargs['context'] = context
                     continue
                 mapped_field = overrides_.get(arg, arg)
                 if not hasattr(context, mapped_field):
