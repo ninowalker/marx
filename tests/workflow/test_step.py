@@ -106,12 +106,12 @@ class Test(unittest.TestCase):
         ctx = DefaultContext()
         ctx.message = 1
         ctx.meow = 1
-        
+
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, arg_map={'message': 'message'})(ctx)
             Step(m, arg_map={'meow': 'message'})(ctx)
-            
+
         assert m.called
         m.assert_any_call(message=1)
         m.assert_any_call(meow=1)
@@ -124,9 +124,35 @@ class Test(unittest.TestCase):
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, arg_map=m_cm)(ctx)
-            
+
         assert m.called
         m.assert_called_once_with(**m_cm.return_value)
+
+    def test_auto_map(self):
+        m_cm = Mock()
+        m_cm.moo = True
+        m_cm.meow = False
+        this = self
+
+        class Unit(LogicUnit):
+            def __call__(self, moo, meow, context):
+                this.success = (moo, meow, context)
+
+        Step(Unit(), arg_map=Unit.AutoMap())(m_cm)
+        assert this.success == (True, False, m_cm), this.success
+
+    def test_auto_map_override(self):
+        class Ctx:
+            moo = True
+        this = self
+
+        class Unit(LogicUnit):
+            def __call__(self, cow):
+                this.success = cow
+
+        Step(Unit(), arg_map=Unit.AutoMap({Unit.COW: 'moo'}))(Ctx())
+        assert this.success == (True), this.success
+
 
     def test_callable_by_str(self):
         m = Mock()
