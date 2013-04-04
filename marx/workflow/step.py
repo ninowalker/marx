@@ -146,15 +146,23 @@ class LogicUnit(object):
         context to like named arguments to eliminate boilerplate, but possibly create
         execution time errors, if care is not taken. With great power comes great
         responsibility - Toby Miguire.
+
+        :param dict overrides: a mapping of arg names to context attributes
+           to explicitly map over.
         """
         def auto_map(context):
-            args = cls._args
+            spec = cls._args
             overrides_ = overrides or {}
-            kwargs = {}
-            for arg in args.args[1:]:
-                if arg == 'context':
-                    # this is special
+            # populate the kwargs and include defaults
+            kwargs = dict(zip(spec.args[-(len(spec.defaults or [])):], spec.defaults or []))
+            for arg in spec.args[1:]:
+                if arg == 'context':  # this is special
                     continue
-                kwargs[arg] = getattr(context, overrides_.get(arg, arg))
+                mapped_field = overrides_.get(arg, arg)
+                if not hasattr(context, mapped_field):
+                    if arg in kwargs:  # it was provided by a default value
+                        continue
+                    raise AttributeError("Context does not have field '%s'. context=%r" % (mapped_field, context))
+                kwargs[arg] = getattr(context, mapped_field)
             return kwargs
         return auto_map

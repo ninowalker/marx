@@ -153,14 +153,34 @@ class Test(unittest.TestCase):
         Step(Unit(), arg_map=Unit.AutoMap({Unit.COW: 'moo'}))(Ctx())
         assert this.success == (True), this.success
 
+    def test_auto_map_bad_field(self):
+        class Ctx:
+            cow = True
+        this = self
+
+        class Unit(LogicUnit):
+            def __call__(self, cow, pig):
+                this.success = cow, pig
+
+        nose.tools.assert_raises(AttributeError, Step(Unit(), arg_map=Unit.AutoMap()), Ctx())  # @UndefinedVariable
+
+    def test_auto_map_default(self):
+        class Ctx:
+            cow = True
+        this = self
+
+        class Unit(LogicUnit):
+            def __call__(self, cow, pig="not kosher"):
+                this.success = cow, pig
+
+        Step(Unit(), arg_map=Unit.AutoMap())(Ctx())
+        assert self.success == (True, "not kosher")
 
     def test_callable_by_str(self):
-        m = Mock()
         ctx = DefaultContext()
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step('%s.a_callable' % __name__)(ctx)
-            
         assert a_callable.called
 
 # don't change this name, test above depends on it. 
