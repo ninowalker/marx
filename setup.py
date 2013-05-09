@@ -18,7 +18,7 @@ def hydrate_examples():
         if os.path.isdir(f):
             continue
         examples[os.path.basename(f)] = "\n    ".join(read(f).split("\n"))
-    print examples.keys()
+    #print examples.keys()
     readme = read(README +".in") % examples
     with open(local(README), "w") as f:
         f.write(readme)

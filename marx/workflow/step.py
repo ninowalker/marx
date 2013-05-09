@@ -5,6 +5,7 @@ Created on Feb 23, 2013
 '''
 import inspect
 import functools
+import types
 
 
 class Step(object):
@@ -113,12 +114,32 @@ class LogicUnitBase(type):
 
 
 class ArgSpec(object):
-    def __init__(self, *types, **kwargs):
-        assert isinstance(types, (list, tuple))
-        self.types = types if not types else tuple(types)
-        isinstance(None, self.types)
+    """Defines the the acceptable types for an argument, along with useful things, like
+    documentation."""
+
+    __UNSPECIFIED = object()
+
+    def __init__(self, *types_, **kwargs):
+        """Constuctor.
+
+        :params *args: a list of python types for input checking
+        :param docs: a description of this argument
+        :param default: a default value if unspecified
+        :param nullable: allow a null/unspecified input; sets the default to None
+                         if default is not provided
+        """
+        assert isinstance(types_, (list, tuple))
+        self.types = types_ if not types_ else tuple(types_)
         self.name = None
         self.docs = kwargs.pop('docs', None)
+        self.default = kwargs.pop('default', self.__UNSPECIFIED)
+        nullable = kwargs.pop('nullable', False)
+        if nullable:
+            self.types += (types.NoneType,)
+            if self.default == self.__UNSPECIFIED:
+                self.default = None
+        if kwargs:
+            raise ValueError("unknown keywords: %s" % kwargs.keys())
 
     def contribute_to_class(self, cls, name):
         call = getattr(cls, '__call__')
@@ -127,7 +148,9 @@ class ArgSpec(object):
     def check_input(self_, name, func):  # @NoSelf
         def wrapper(self, **kwargs):
             if name not in kwargs:
-                raise KeyError(name)
+                if self_.default == self_.__UNSPECIFIED:
+                    raise KeyError(name)
+                kwargs[name] = self_.default
             if not isinstance(kwargs[name], self_.types):
                 raise TypeError((name, self_.types))
             return func(self, **kwargs)

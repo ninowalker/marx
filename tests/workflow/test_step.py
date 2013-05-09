@@ -19,7 +19,7 @@ class Test(unittest.TestCase):
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m)(ctx)
-        
+
         assert m.called
         m.assert_called_once_with(context=ctx)
         m.reset_mock()
@@ -27,7 +27,7 @@ class Test(unittest.TestCase):
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [['context']]
             Step(m)(ctx)
-        
+
         assert m.called
         m.assert_called_once_with(context=ctx)
 
@@ -39,7 +39,7 @@ class Test(unittest.TestCase):
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, result_map={'baz': 'returned'})(ctx)
-            
+
         assert m.called
         assert ctx.baz == 'bar'
 
@@ -48,33 +48,33 @@ class Test(unittest.TestCase):
         m.return_value = {'returned': ['abc', 'bar']}
         ctx = DefaultContext()
         ctx.baz = None
-        
-        def reverse_and_join(result, context):
+
+        def reverse_and_join(result, context): #@UnusedVariable
             return "".join(result['returned'])[::-1]
-        
+
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, result_map={'baz': reverse_and_join})(ctx)
-            
+
         assert m.called
         assert ctx.baz == 'rabcba'
-        
+
     def test_result_mapper_list(self):
         m = Mock()
         m.return_value = {'returned': {'bar': 1, 'boz': 2}}
         ctx = DefaultContext()
         ctx.baz = ctx.boz = None
-        
+
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, result_map={'baz': ('returned', 'bar'),
                                 'boz': ('returned', 'boz')})(ctx)
-            
+
         assert m.called
         print ctx.__dict__
         assert ctx.baz == 1
         assert ctx.boz == 2
-        
+
     def test_result_mapper_custom(self):
         m = Mock()
         m.return_value = {'returned': 'bar'}
@@ -83,7 +83,7 @@ class Test(unittest.TestCase):
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, result_map=m_rm)(ctx)
-            
+
         assert m.called
         assert m_rm.called
         m_rm.assert_called_once_with(m.return_value, ctx)
@@ -96,7 +96,7 @@ class Test(unittest.TestCase):
         with patch('inspect.getargspec') as argspec:
             argspec.return_value = [[]]
             Step(m, extra_kwargs=dict(meow=True))(ctx)
-            
+
         assert m.called
         m.assert_called_once_with(meow=True)
 
@@ -183,7 +183,7 @@ class Test(unittest.TestCase):
             Step('%s.a_callable' % __name__)(ctx)
         assert a_callable.called
 
-# don't change this name, test above depends on it. 
+# don't change this name, test above depends on it.
 a_callable = Mock()
 
 
@@ -192,53 +192,85 @@ class TestLogicUnit(unittest.TestCase):
         this = self
         class Unit(LogicUnit):
             astr = ArgSpec(str, docs="A string value")
-            
+
             def __call__(self, an_arg, astr="s", context=None):
                 this.value = an_arg
-        
+
         assert Unit.AN_ARG == "an_arg"
         assert Unit.ASTR == "astr"
-        
+
         u = Unit()
         # this is fine:
         u(an_arg=1, astr="grr")
         assert self.value == 1
         assert Unit._accepts_context
-        
+
         # this should fail type checking
         nose.tools.assert_raises(TypeError, u, an_arg=1, astr=1) #@UndefinedVariable
-        
+
     def test_composition(self):
         class Domain(object): pass
         class UserProfile(object): pass
-        
+
         class IsSameDomainUser(LogicUnit):
             domain = ArgSpec(Domain)
             user = ArgSpec(UserProfile)
-            
+
             def __call__(self, user, domain):
                 if not user.domain_id == domain.id:
                     raise Exception()
-                
+
         assert not IsSameDomainUser._accepts_context
-                
-        s = Step(IsSameDomainUser(), arg_map={IsSameDomainUser.USER: 'actor', 
+
+        s = Step(IsSameDomainUser(), arg_map={IsSameDomainUser.USER: 'actor',
                                               IsSameDomainUser.DOMAIN: 'domain'})
-        
+
         class Context(DefaultContext):
             domain = Domain()
             actor = 1
-        
+
         assert s
         assert isinstance(s._call, IsSameDomainUser)
         with nose.tools.assert_raises(TypeError): #@UndefinedVariable
             s(Context())
-            
-        
+
+    def test_default_value(self):
+        class HasADefault(LogicUnit):
+            meow = ArgSpec(int, default=1)
+
+            def __call__(self, meow):
+                if meow == 1:
+                    raise ValueError()
+                raise IndexError()
+
+        assert HasADefault.MEOW is not None
+        nose.tools.assert_raises(ValueError, HasADefault()) #@UndefinedVariable
+        nose.tools.assert_raises(ValueError, HasADefault(), meow=1) #@UndefinedVariable
+        nose.tools.assert_raises(IndexError, HasADefault(), meow=10) #@UndefinedVariable
+
+    def test_nullable(self):
+        class Nullable(LogicUnit):
+            meow = ArgSpec(int, nullable=True)
+
+            def __call__(self, meow):
+                if meow is None:
+                    raise ValueError()
+                return meow
+
+        # the default is none
+        nose.tools.assert_raises(ValueError, Nullable()) #@UndefinedVariable
+        nose.tools.assert_raises(ValueError, Nullable(), meow=None) #@UndefinedVariable
+
+        assert Nullable()(meow=10) == 10
+
+    def test_bad_kwarg(self):
+        self.assertRaises(ValueError, ArgSpec, int, meow="bad arg")
+
+
+
 class TestFlow(unittest.TestCase):
     def test_run_example_1(self):
         #import pdb; pdb.set_trace()
         ctx = run_example_1()
         assert ctx
-    
-        
+
