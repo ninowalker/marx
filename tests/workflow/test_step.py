@@ -263,6 +263,14 @@ class TestLogicUnit(unittest.TestCase):
 
         assert Nullable()(meow=10) == 10
 
+
+class TestArgSpec(unittest.TestCase):
+    def test_any_arg(self):
+        s = ArgSpec(default="meow")
+        assert s.default == 'meow'
+        assert s.types == (object,)
+        self.assertRaises(ValueError, ArgSpec, int, meow="bad arg")
+
     def test_bad_kwarg(self):
         self.assertRaises(ValueError, ArgSpec, int, meow="bad arg")
 

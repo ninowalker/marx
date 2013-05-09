@@ -128,7 +128,8 @@ class ArgSpec(object):
         :param nullable: allow a null/unspecified input; sets the default to None
                          if default is not provided
         """
-        assert isinstance(types_, (list, tuple))
+        if not types_:
+            types_ = (object,)
         self.types = types_ if not types_ else tuple(types_)
         self.name = None
         self.docs = kwargs.pop('docs', None)
