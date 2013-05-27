@@ -87,6 +87,7 @@ class LogicUnitBase(type):
     def __new__(cls, name, bases, attrs):
         specs = [s for s in attrs.items() if hasattr(s[1], 'contribute_to_class')]
         attrs = dict(s for s in attrs.items() if not hasattr(s[1], 'contribute_to_class'))
+        results = [s for s in attrs.items() if hasattr(s[1], 'set_value')]
 
         cls = super(LogicUnitBase, cls).__new__(cls, name, bases, attrs)
         call = attrs.get('__call__')
@@ -106,6 +107,7 @@ class LogicUnitBase(type):
         # keep track of whether the invocation expects a context
         setattr(cls, '_accepts_context', 'context' in args.args)
         setattr(cls, '_args', args)
+        setattr(cls, '_results', results)
 
         # let them contribute to the class
         for arg, spec in specs:
@@ -128,9 +130,7 @@ class ArgSpec(object):
         :param nullable: allow a null/unspecified input; sets the default to None
                          if default is not provided
         """
-        if not types_:
-            types_ = (object,)
-        self.types = types_ if not types_ else tuple(types_)
+        self.types = tuple((object,)) if not types_ else tuple(types_)
         self.name = None
         self.docs = kwargs.pop('docs', None)
         self.default = kwargs.pop('default', self.__UNSPECIFIED)
@@ -158,12 +158,37 @@ class ArgSpec(object):
         return wrapper
 
 
+# TODO document
+class ResultSpec(object):
+    """The result counterpart to an ArgSpec. Defines the return values for a step.
+       This provides a hook for documentation and an automatically generated result map."""
+
+    def __init__(self, *types_, **kwargs):
+        """Constructor.
+
+        :params *args: a list of python types for return value checking
+        :param docs: a description of this result
+        :param default: a default return value, values begin as none unless specified
+        """
+        self.types = tuple((object,)) if not types_ else tuple(types_)
+        self.docs = kwargs.pop('docs', None)
+        self.value = kwargs.pop('default', None)
+        if kwargs:
+            raise ValueError("unknown keywords: %s" % kwargs.keys())
+
+    def set_value(self, value):
+        if not isinstance(value, self.types):
+            raise TypeError((value, self.types))
+        self.value = value
+
+
 class LogicUnit(object):
     __metaclass__ = LogicUnitBase
 
     def __call__(self):
         abstract  # @UndefinedVariable ~ this is a python guru move
 
+    # TODO, document
     @classmethod
     def AutoMap(cls, overrides=None):
         """Provides a mechanism for automatically binding like-named properties of the
@@ -191,3 +216,11 @@ class LogicUnit(object):
                 kwargs[arg] = getattr(context, mapped_field)
             return kwargs
         return auto_map
+
+    # TODO, document, naming?
+    def get_result_map(self):
+        result_map = {}
+        for name, spec in self._results:
+            result_map[name] = spec.value
+
+        return result_map
