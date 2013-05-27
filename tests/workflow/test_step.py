@@ -5,7 +5,7 @@ Created on Feb 23, 2013
 '''
 import unittest
 from mock import Mock, patch
-from marx.workflow.step import Step, LogicUnit, ArgSpec
+from marx.workflow.step import Step, LogicUnit, ArgSpec, ResultSpec
 import nose.tools
 from tests.workflow.example_1 import run as run_example_1
 from marx.workflow.context import DefaultContext
@@ -182,6 +182,41 @@ class Test(unittest.TestCase):
             argspec.return_value = [[]]
             Step('%s.a_callable' % __name__)(ctx)
         assert a_callable.called
+
+    def test_results_declaration(self):
+
+        class Unit(LogicUnit):
+
+            meow = ArgSpec(bool, docs="The meow.")
+            the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
+
+            def __call__(self, meow):
+                self.the_cat_has_spoken.set_value(meow)
+
+                return self.get_result_map()
+
+        test = Unit()
+        result = test(meow=True)
+        assert isinstance(result, dict)
+        assert result['the_cat_has_spoken']
+
+        result = test(meow=False)
+        assert not result['the_cat_has_spoken']
+
+    def test_default_result_value(self):
+
+        class Unit(LogicUnit):
+
+            meow = ArgSpec(bool, default=False, docs="The meow.")
+            the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
+
+            def __call__(self, meow):
+                return self.get_result_map()
+
+        test = Unit()
+        result = test(meow=True)
+        assert isinstance(result, dict)
+        assert not result['the_cat_has_spoken']
 
 # don't change this name, test above depends on it.
 a_callable = Mock()
