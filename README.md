@@ -90,30 +90,64 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
         was_hit = Field(bool, docs="Success of the throwing event")
     
     """ A workflow is a series of steps."""
-    ThrowPieWorkflow = Workflow()
+    IsUserAuthorizedStep = Step(
+        IsUserAuthorized("throw_pie"),
+        # we bind from the context to the arguments of the method.
+        arg_map={IsUserAuthorized.USER: ThrowPieContext.THROWER}
+    )
+    MakePieStep = Step(
+        MakePie(),
+        arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
+        # we bind from the returned result back to the context
+        result_map={ThrowPieContext.PIE: 'pie'}
+    )
+    ThrowThingStep = Step(
+        ThrowThing(),
+        arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
+                 ThrowThing.TARGET: ThrowPieContext.TARGET,
+                 ThrowThing.THING: ThrowPieContext.PIE},
+        result_map={ThrowPieContext.WAS_HIT: 'hit'}
+    )
     
-    ThrowPieWorkflow.add_step(IsUserAuthorized("throw_pie"),
-                              # we bind from the context to the arguments of the method.
-                              arg_map={IsUserAuthorized.USER: ThrowPieContext.THROWER})
-    ThrowPieWorkflow.add_step(MakePie(),
-                              arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
-                              # we bind from the returned result back to the context
-                              result_map={ThrowPieContext.PIE: 'pie'})
-    ThrowPieWorkflow.add_step(ThrowThing(),
-                              arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
-                                       ThrowThing.TARGET: ThrowPieContext.TARGET,
-                                       ThrowThing.THING: ThrowPieContext.PIE},
-                              result_map={ThrowPieContext.WAS_HIT: 'hit'})
+    """ There are a few ways to build up a workflow. By constructor..."""
+    ThrowPieWorkflowA = Workflow(steps=[
+        IsUserAuthorizedStep,
+        MakePieStep,
+        ThrowThingStep,
+    ])
+    
+    """ Or using add_step..."""
+    ThrowPieWorkflowB = Workflow().add_step(
+        IsUserAuthorizedStep
+    ).add_step(
+        MakePieStep
+    ).add_step(
+        ThrowThingStep
+    )
+    
+    """ Or using the overloaded addition operator."""
+    EmptyWorkflow = Workflow()
+    ThrowPieWorkflowC_A = EmptyWorkflow + IsUserAuthorizedStep + MakePieStep
+    ThrowPieWorkflowC_B = EmptyWorkflow + ThrowThingStep
+    ThrowPieWorkflowC = ThrowPieWorkflowC_A + ThrowPieWorkflowC_B
     
     def run():
         """To execute a workflow, prepare a context, and pass it through."""
         ctx = ThrowPieContext()
         ctx.thrower = User("bob")
         ctx.target = User("frank")
-        try:
-            ThrowPieWorkflow(ctx)
-            assert ctx.was_hit is not None
-            assert ctx.pie == 'lemon'
-            return ctx
-        except PermissionDeniedError:
-            assert False
+        for WorkflowType in (ThrowPieWorkflowA,
+                             ThrowPieWorkflowB,
+                             ThrowPieWorkflowC):
+            try:
+                WorkflowType(ctx)
+                assert ctx.was_hit is not None
+                assert ctx.pie == 'lemon'
+                return ctx
+            except PermissionDeniedError:
+                assert False
+    
+        # Ensure that our ThrowPieWorkflowC did not modify its components
+        assert EmptyWorkflow.steps == []
+        assert ThrowThingStep not in ThrowPieWorkflowC_A.steps
+    
