@@ -87,7 +87,6 @@ class LogicUnitBase(type):
     def __new__(cls, name, bases, attrs):
         specs = [s for s in attrs.items() if hasattr(s[1], 'contribute_to_class')]
         attrs = dict(s for s in attrs.items() if not hasattr(s[1], 'contribute_to_class'))
-        results = [s for s in attrs.items() if hasattr(s[1], 'set_value')]
 
         cls = super(LogicUnitBase, cls).__new__(cls, name, bases, attrs)
         call = attrs.get('__call__')
@@ -107,7 +106,6 @@ class LogicUnitBase(type):
         # keep track of whether the invocation expects a context
         setattr(cls, '_accepts_context', 'context' in args.args)
         setattr(cls, '_args', args)
-        setattr(cls, '_results', results)
 
         # let them contribute to the class
         for arg, spec in specs:
@@ -172,14 +170,19 @@ class ResultSpec(object):
         """
         self.types = tuple((object,)) if not types_ else tuple(types_)
         self.docs = kwargs.pop('docs', None)
-        self.value = kwargs.pop('default', None)
+        self._value = kwargs.pop('default', None)
         if kwargs:
             raise ValueError("unknown keywords: %s" % kwargs.keys())
 
-    def set_value(self, value):
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
         if not isinstance(value, self.types):
             raise TypeError((value, self.types))
-        self.value = value
+        self._value = value
 
 
 class LogicUnit(object):
@@ -220,7 +223,9 @@ class LogicUnit(object):
     # TODO, document, naming?
     def get_result_map(self):
         result_map = {}
-        for name, spec in self._results:
-            result_map[name] = spec.value
+        for name in dir(self):
+            attr = getattr(self, name)
+            if isinstance(attr, ResultSpec):
+                result_map[name] = attr.value
 
         return result_map
