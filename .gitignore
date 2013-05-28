@@ -35,3 +35,6 @@ nosetests.xml
 .pydevproject
 cover
 coverage.xml
+
+# Superior text editors
+subl
