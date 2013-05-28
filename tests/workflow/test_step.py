@@ -191,7 +191,7 @@ class Test(unittest.TestCase):
             the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
 
             def __call__(self, meow):
-                self.the_cat_has_spoken.set_value(meow)
+                self.the_cat_has_spoken.value = meow
 
                 return self.get_result_map()
 
@@ -207,8 +207,8 @@ class Test(unittest.TestCase):
 
         class Unit(LogicUnit):
 
-            meow = ArgSpec(bool, default=False, docs="The meow.")
-            the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
+            meow = ArgSpec(bool, docs="The meow.")
+            the_cat_has_spoken = ResultSpec(bool, default=True, docs="Has the cat spoken?")
 
             def __call__(self, meow):
                 return self.get_result_map()
@@ -216,7 +216,38 @@ class Test(unittest.TestCase):
         test = Unit()
         result = test(meow=True)
         assert isinstance(result, dict)
-        assert not result['the_cat_has_spoken']
+        assert result['the_cat_has_spoken']
+
+    def test_wrong_type_result_value(self):
+
+        class Unit(LogicUnit):
+
+            the_cat_has_spoken = ResultSpec(bool, default=True, docs="Has the cat spoken?")
+
+            def __call__(self):
+                self.the_cat_has_spoken.value = 'meow'
+                return self.get_result_map()
+
+        test = Unit()
+        nose.tools.assert_raises(TypeError, test)
+
+    def test_resultspec_in_multiple_instances(self):
+
+        class Unit(LogicUnit):
+
+            meow = ArgSpec(bool, docs="The meow.")
+            the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
+
+            def __call__(self, meow):
+                self.the_cat_has_spoken.value = meow
+                return self.get_result_map()
+
+        test = Unit()
+        doppelganger_test = Unit()
+        result_1 = test(meow=True)
+        result_2 = doppelganger_test(meow=False)
+        assert result_1['the_cat_has_spoken']
+        assert not result_2['the_cat_has_spoken']
 
 # don't change this name, test above depends on it.
 a_callable = Mock()
