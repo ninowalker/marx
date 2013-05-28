@@ -5,6 +5,7 @@ Created on Feb 23, 2013
 '''
 import inspect
 import functools
+import threading
 import types
 
 
@@ -170,20 +171,29 @@ class ResultSpec(object):
         """
         self.types = tuple((object,)) if not types_ else tuple(types_)
         self.docs = kwargs.pop('docs', None)
-        self._value = kwargs.pop('default', None)
+        self._default = kwargs.pop('default', None)
+        self._call_map = {}
         if kwargs:
             raise ValueError("unknown keywords: %s" % kwargs.keys())
 
     @property
     def value(self):
-        return self._value
+        thread_id = self._get_thread_id()
+        return self._call_map.get(thread_id, self._default)
 
     @value.setter
     def value(self, value):
         if not isinstance(value, self.types):
             raise TypeError((value, self.types))
-        self._value = value
+        thread_id = self._get_thread_id()
+        self._call_map[thread_id] = value
 
+    def _get_thread_id(self):
+        try:
+            thread_id = threading.current_thread().get_ident()
+        except AttributeError, e:
+            thread_id = 'main'
+        return thread_id
 
 class LogicUnit(object):
     __metaclass__ = LogicUnitBase
