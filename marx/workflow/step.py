@@ -172,28 +172,20 @@ class ResultSpec(object):
         self.types = tuple((object,)) if not types_ else tuple(types_)
         self.docs = kwargs.pop('docs', None)
         self._default = kwargs.pop('default', None)
-        self._call_map = {}
+        self._value = threading.local()
         if kwargs:
             raise ValueError("unknown keywords: %s" % kwargs.keys())
 
     @property
     def value(self):
-        thread_id = self._get_thread_id()
-        return self._call_map.get(thread_id, self._default)
+        return self._value or self._default
 
     @value.setter
     def value(self, value):
         if not isinstance(value, self.types):
             raise TypeError((value, self.types))
-        thread_id = self._get_thread_id()
-        self._call_map[thread_id] = value
+        self._value = value
 
-    def _get_thread_id(self):
-        try:
-            thread_id = threading.current_thread().get_ident()
-        except AttributeError, e:
-            thread_id = 'main'
-        return thread_id
 
 class LogicUnit(object):
     __metaclass__ = LogicUnitBase
