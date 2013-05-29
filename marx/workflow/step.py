@@ -150,10 +150,10 @@ class ArgSpec(object):
         def wrapper(self, **kwargs):
             if name not in kwargs:
                 if self_.default == self_.__UNSPECIFIED:
-                    raise KeyError(name)
+                    raise KeyError("Undefined argument: '%s' for '%s'" % (name, type(self).__name__))
                 kwargs[name] = self_.default
             if not isinstance(kwargs[name], self_.types):
-                raise TypeError((name, self_.types))
+                raise TypeError("Incorrect argument: '%s' for '%s'. Expected: '%s'" % (name, type(self).__name__, self_.types))
             return func(self, **kwargs)
         return wrapper
 
