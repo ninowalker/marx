@@ -172,32 +172,28 @@ class ResultSpec(object):
         self.types = tuple((object,)) if not types_ else tuple(types_)
         self.docs = kwargs.pop('docs', None)
         self._default = kwargs.pop('default', None)
+        self._value = threading.local()
         if kwargs:
             raise ValueError("unknown keywords: %s" % kwargs.keys())
 
     @property
     def value(self):
-        return self._value or self._default
+        return self._value
 
     @value.setter
     def value(self, value):
-        if not isinstance(value, self.types):
+        if value is not None and not isinstance(value, self.types):
             raise TypeError((value, self.types))
         self._value = value
 
-    @value.deleter
-    def value(self):
-        self._value = threading.local()
-
     def contribute_to_class(self, cls, name):
-        # We need to clear the result before each call.
+        setattr(cls, name, self)
         call = getattr(cls, '__call__')
         setattr(cls, '__call__', self.clear_result(name, call))
 
     def clear_result(self_, name, func):
         def wrapper(self, **kwargs):
-            del self_.value
-            setattr(self, name, self_)
+            self_.value = self_._default
             return func(self, **kwargs)
         return wrapper
 
