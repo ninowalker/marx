@@ -172,7 +172,6 @@ class ResultSpec(object):
         self.types = tuple((object,)) if not types_ else tuple(types_)
         self.docs = kwargs.pop('docs', None)
         self._default = kwargs.pop('default', None)
-        self._value = threading.local()
         if kwargs:
             raise ValueError("unknown keywords: %s" % kwargs.keys())
 
@@ -185,6 +184,22 @@ class ResultSpec(object):
         if not isinstance(value, self.types):
             raise TypeError((value, self.types))
         self._value = value
+
+    @value.deleter
+    def value(self):
+        self._value = threading.local()
+
+    def contribute_to_class(self, cls, name):
+        # We need to clear the result before each call.
+        call = getattr(cls, '__call__')
+        setattr(cls, '__call__', self.clear_result(name, call))
+
+    def clear_result(self_, name, func):
+        def wrapper(self, **kwargs):
+            del self_.value
+            setattr(self, name, self_)
+            return func(self, **kwargs)
+        return wrapper
 
 
 class LogicUnit(object):
