@@ -35,6 +35,7 @@ class Workflow(object):
 
     def add_step(self, *args, **kwargs):
         self.steps.append(Step(*args, **kwargs))
+        return self
 
     def default_on_error(self, e, context):
         raise type(e), e.message, sys.exc_info()[2]
@@ -44,3 +45,24 @@ class Workflow(object):
 
     def default_on_reply(self, reply, context):
         pass
+
+    def __add__(self, rhs):
+        '''
+        The + operator returns a new Workflow instance,
+            with the same steps as this one,
+            followed by either the given right hand step,
+            or the steps of the given right hand Workflow.
+        '''
+        if isinstance(rhs, Step):
+            incoming = [rhs]
+        elif isinstance(rhs, Workflow):
+            incoming = rhs.steps
+        else:
+            raise TypeError('Only Steps or other Workflows can be '
+                'concatenated to form new Workflows.')
+
+        outgoing = self.steps + incoming
+        return Workflow(steps=outgoing,
+                        on_error=self.on_error,
+                        on_abort=self.on_abort,
+                        on_reply=self.reply)

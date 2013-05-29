@@ -16,9 +16,12 @@ class TestAbort(unittest.TestCase):
         if self.x != None:
             raise Abort()
 
-    def skip_if_not_none(self, context):
-        if self.x != None:
-            raise SkipStep()
+    def skip(self, context):
+        raise SkipStep()
+        context.reply(1)
+
+    def reply(self, context):
+        context.reply(1)
 
     def assign(self, v):
         self.x = v
@@ -69,9 +72,7 @@ class TestAbort(unittest.TestCase):
         self.x = None
         abort_if_not_none = self.abort_if_not_none
         assign = self.assign
-
-        def reply(context):
-            context.reply(1)
+        reply = self.reply
 
         # assert that replies carry through
         self.x = None
@@ -80,6 +81,17 @@ class TestAbort(unittest.TestCase):
                             abort_if_not_none, reply])
         ctx = w(DefaultContext())
         assert ctx.replies == [1, 1]
+
+    def test_skip(self):
+        w = Workflow(steps=[self.skip])
+        ctx = w(DefaultContext())
+        assert ctx.replies == []
+
+
+class TestProgrammerError(unittest.TestCase):
+    def test_bad_concatenation(self):
+        with nose.tools.assert_raises(TypeError):
+            Workflow() + 10
 
 
 class TestOnError(unittest.TestCase):
