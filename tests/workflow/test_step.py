@@ -5,7 +5,8 @@ Created on Feb 23, 2013
 '''
 import unittest
 from mock import Mock, patch
-from marx.workflow.step import Step, LogicUnit, ArgSpec, ResultSpec
+from marx.workflow.step import Step, LogicUnit, ArgSpec, ResultSpec,\
+    ResultObject
 import nose.tools
 from tests.workflow.example_1 import run as run_example_1
 from marx.workflow.context import DefaultContext
@@ -184,63 +185,66 @@ class Test(unittest.TestCase):
         assert a_callable.called
 
     def test_results_declaration(self):
-
         class Unit(LogicUnit):
-
             meow = ArgSpec(bool, docs="The meow.")
             the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
 
             def __call__(self, meow):
-                self.the_cat_has_spoken.value = meow
-
-                return self.get_result_map()
+                self.result.the_cat_has_spoken = meow
 
         test = Unit()
         result = test(meow=True)
-        assert isinstance(result, dict)
+        assert isinstance(result, ResultObject)
         assert result['the_cat_has_spoken']
 
         result = test(meow=False)
         assert not result['the_cat_has_spoken']
 
     def test_default_result_value(self):
-
         class Unit(LogicUnit):
-
             meow = ArgSpec(bool, docs="The meow.")
             the_cat_has_spoken = ResultSpec(bool, default=True, docs="Has the cat spoken?")
 
             def __call__(self, meow):
-                return self.get_result_map()
+                pass
 
         test = Unit()
         result = test(meow=True)
         assert isinstance(result, dict)
         assert result['the_cat_has_spoken']
+        assert result.the_cat_has_spoken == True
+
+    def test_alt_result_value(self):
+        class Unit(LogicUnit):
+            meow = ArgSpec(bool, docs="The meow.")
+            the_cat_has_spoken = ResultSpec(bool, default=True, docs="Has the cat spoken?")
+
+            def __call__(self, meow):
+                return {'the_cat_has_spoken': False}
+
+        test = Unit()
+        result = test(meow=True)
+        assert isinstance(result, dict)
+        assert not result['the_cat_has_spoken']
 
     def test_wrong_type_result_value(self):
-
         class Unit(LogicUnit):
-
             the_cat_has_spoken = ResultSpec(bool, default=True, docs="Has the cat spoken?")
 
             def __call__(self):
-                self.the_cat_has_spoken.value = 'meow'
-                return self.get_result_map()
+                self.result.the_cat_has_spoken = 'meow'
+                #return self.get_result_map()
 
         test = Unit()
         nose.tools.assert_raises(TypeError, test)
 
     def test_resultspec_in_multiple_instances(self):
-
         class Unit(LogicUnit):
-
             meow = ArgSpec(bool, docs="The meow.")
             the_cat_has_spoken = ResultSpec(bool, docs="Has the cat spoken?")
 
             def __call__(self, meow):
-                self.the_cat_has_spoken.value = meow
-                return self.get_result_map()
+                self.result.the_cat_has_spoken = meow
 
         test = Unit()
         doppelganger_test = Unit()
@@ -341,10 +345,8 @@ class TestArgSpec(unittest.TestCase):
         self.assertRaises(ValueError, ArgSpec, int, meow="bad arg")
 
 
-
 class TestFlow(unittest.TestCase):
     def test_run_example_1(self):
-        #import pdb; pdb.set_trace()
         ctx = run_example_1()
         assert ctx
 

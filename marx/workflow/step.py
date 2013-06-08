@@ -157,11 +157,37 @@ class ArgSpec(object):
         return wrapper
 
 
-# TODO document
-class ResultSpec(object):
-    """The result counterpart to an ArgSpec. Defines the return values for a step.
-       This provides a hook for documentation and an automatically generated result map."""
+class ResultObject(dict):
+    """
+    If using a result spec, the logic unit will return an instance
+    of this class. It provides handy dict and object like properties
+    with type checking.
+    """
+    def __init__(self, fields):
+        object.__setattr__(self, '_fields', fields)
+        object.__setattr__(self, '_values', {name: spec._default for name, spec in fields.iteritems()})
 
+    def __getattr__(self, name):
+        return self._values[name]
+
+    def __setattr__(self, name, value):
+        self.__setitem__(name, value)
+
+    def __setitem__(self, name, value):
+        spec = self._fields[name]
+        if not isinstance(value, spec.types):
+            raise TypeError((value, spec.types))
+        self._values[name] = value
+
+    def __getitem__(self, name):
+        return self._values[name]
+
+
+class ResultSpec(object):
+    """
+    The result counterpart to an ArgSpec. Defines the return values for a step.
+    This provides a hook for documentation and an automatically generated result map.
+    """
     def __init__(self, *types_, **kwargs):
         """Constructor.
 
@@ -172,29 +198,30 @@ class ResultSpec(object):
         self.types = tuple((object,)) if not types_ else tuple(types_)
         self.docs = kwargs.pop('docs', None)
         self._default = kwargs.pop('default', None)
-        self._value = threading.local()
         if kwargs:
             raise ValueError("unknown keywords: %s" % kwargs.keys())
 
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        if value is not None and not isinstance(value, self.types):
-            raise TypeError((value, self.types))
-        self._value = value
-
     def contribute_to_class(self, cls, name):
         setattr(cls, name, self)
-        call = getattr(cls, '__call__')
-        setattr(cls, '__call__', self.clear_result(name, call))
+        if hasattr(cls, '_result_fields'):
+            cls.__result_fields[name] = self
+            return
+        setattr(cls, '_result_fields', {name: self})
+        setattr(cls, '_results', threading.local())
+        setattr(cls, '__call__', self.manage_result(getattr(cls, '__call__')))
+        setattr(cls, 'result', property(lambda self_: self_._results.value))
 
-    def clear_result(self_, name, func):
+    def manage_result(_, func): #@NoSelf
+        @functools.wraps(func)
         def wrapper(self, **kwargs):
-            self_.value = self_._default
-            return func(self, **kwargs)
+            try:
+                self._results.value = ResultObject(self._result_fields)
+                res = func(self, **kwargs)
+                if res is None:
+                    return self._results.value
+                return res
+            finally:
+                self._results.value = None
         return wrapper
 
 
@@ -204,10 +231,10 @@ class LogicUnit(object):
     def __call__(self):
         abstract  # @UndefinedVariable ~ this is a python guru move
 
-    # TODO, document
     @classmethod
     def AutoMap(cls, overrides=None):
-        """Provides a mechanism for automatically binding like-named properties of the
+        """
+        Provides a mechanism for automatically binding like-named properties of the
         context to like named arguments to eliminate boilerplate, but possibly create
         execution time errors, if care is not taken. With great power comes great
         responsibility - Toby Miguire.
@@ -233,12 +260,12 @@ class LogicUnit(object):
             return kwargs
         return auto_map
 
-    # TODO, document, naming?
-    def get_result_map(self):
-        result_map = {}
-        for name in dir(self):
-            attr = getattr(self, name)
-            if isinstance(attr, ResultSpec):
-                result_map[name] = attr.value
-
-        return result_map
+    @classmethod
+    def ResultMap(cls, ctx_cls, overrides=None):
+        spec = {}
+        for name, _ in cls._result_fields.iteritems():
+            if hasattr(ctx_cls, name):
+                spec[name] = name
+        if overrides:
+            spec.update(overrides)
+        return spec
