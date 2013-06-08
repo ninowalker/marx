@@ -14,7 +14,7 @@ class TestField(unittest.TestCase):
         class Context(DefaultContext):
             user = Field(int)
             str_or_float = Field(str, float)
-            
+
         assert hasattr(Context, 'USER')
         assert Context.USER == 'user'
         assert hasattr(Context, 'user')
@@ -25,29 +25,29 @@ class TestField(unittest.TestCase):
         assert c.user == 1
         with nose.tools.assert_raises(InvalidContextAssignment): #@UndefinedVariable
             c.user = "s"
-        
+
         with nose.tools.assert_raises(InvalidContextAssignment): #@UndefinedVariable
             c.str_or_float = 1
 
-        # check that we haven't corrupted the class        
+        # check that we haven't corrupted the class
         c2 = Context(None)
         assert c2.user is None
-    
+
     def test_contribute_to_class(self):
         pass
-    
+
     def test_multiple_inheritance(self):
         class A(DefaultContext):
             a = Field(int)
-            
+
         class B(DefaultContext):
             b = Field(str)
-            
+
         class C(A, B):
             c = Field(int)
-        
+
         c = C()
         for f in "abc":
             assert hasattr(c, f)
-            
+
         assert not hasattr(c, "d")
