@@ -20,12 +20,12 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
     where business logic requires the interaction of many systems,
     logic is smeared around and duplicated, and not well encapsulated.
     
-    The approach here splits execution into discrete units which can be 
+    The approach here splits execution into discrete units which can be
     composed into other workflows encouraging reuse, testability, etc.
     """
     
     
-    from marx.workflow.step import LogicUnit, ArgSpec, Step
+    from marx.workflow.step import LogicUnit, ArgSpec, Step, ResultSpec
     from marx.workflow.flow import Workflow
     from marx.workflow.context import DefaultContext, Field
     from tests.workflow.example_objects import User, PermissionDeniedError
@@ -34,56 +34,61 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
     class IsUserAuthorized(LogicUnit):
         """Checks permission for a user+action, and notifies authorities
         if it fails."""
-        
+    
         user = ArgSpec(User, docs="The user performing the action")
-        
+    
         def __init__(self, action):
             """
             @param action: The action that will be checked.
             """
             self.action = action
-        
+    
         def __call__(self, user):
             """
             @param user: The user performing the action.
-            """ 
+            """
             if self.is_authorized(user):
                 return
             self.notify_authorities(user, self.action)
             raise PermissionDeniedError(self.action)
-        
+    
         def is_authorized(self, user):
             return user.name in ("bob", "mary")
-        
+    
         def notify_authorities(self, user, action):
             print "AUTHORITIES!!!", user, " attempted illegal action", self.action
     
     
     class MakePie(LogicUnit):
         """Makes the pie."""
-        
+    
         maker = ArgSpec(User, docs="The person making pie.")
-        
+        pie = ResultSpec(basestring, docs="Kind of pie")
+    
         def __call__(self, maker):
             maker.increment("pies_made", 1)
-            return {'pie': 'lemon'}
+            self.result.pie = 'lemon'
+    
     
     class ThrowThing(LogicUnit):
         """Subject Object (Verb) Indirect-object"""
-        
+    
         actor = ArgSpec(User)
-        
+        hit = ResultSpec(bool, default=False, docs="Did we get 'em?")
+    
         # we omit target and thing here, because we don't
         # need to enumerate/type constrain the values in this example
-        
+    
         def __call__(self, actor, thing, target):
             actor.increment("things_throw")
             print "Throwing", thing
-            return {'hit': actor.can_throw()} 
+            self.result.hit = actor.can_throw()
+            # we don't need to return, but we can.
+            return self.result
     
     
     class ThrowPieContext(DefaultContext):
-        """The execution context for the ThrowPieWorkflow.""" 
+        """The execution context for the ThrowPieWorkflow."""
         thrower = Field(User, docs="Somebody has to throw it")
         target = Field(User, docs="At somebody")
         pie = Field(str, docs="A pie, which we make along the way")
@@ -99,15 +104,15 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
         MakePie(),
         arg_map={MakePie.MAKER: ThrowPieContext.THROWER},
         # we bind from the returned result back to the context
-        result_map={ThrowPieContext.PIE: 'pie'}
+        result_map=MakePie.ResultMap(ThrowPieContext)
     )
     ThrowThingStep = Step(
         ThrowThing(),
-        arg_map={ThrowThing.ACTOR: ThrowPieContext.THROWER,
-                 ThrowThing.TARGET: ThrowPieContext.TARGET,
-                 ThrowThing.THING: ThrowPieContext.PIE},
+        arg_map=ThrowThing.AutoMap({ThrowThing.ACTOR: ThrowPieContext.THROWER,
+                                    ThrowThing.THING: ThrowPieContext.PIE}),
         result_map={ThrowPieContext.WAS_HIT: 'hit'}
     )
+    
     
     """ There are a few ways to build up a workflow. By constructor..."""
     ThrowPieWorkflowA = Workflow(steps=[
@@ -130,6 +135,7 @@ You'll find the [full example](./tests/workflow/example_1.py) in the tests/ dire
     ThrowPieWorkflowC_A = EmptyWorkflow + IsUserAuthorizedStep + MakePieStep
     ThrowPieWorkflowC_B = EmptyWorkflow + ThrowThingStep
     ThrowPieWorkflowC = ThrowPieWorkflowC_A + ThrowPieWorkflowC_B
+    
     
     def run():
         """To execute a workflow, prepare a context, and pass it through."""

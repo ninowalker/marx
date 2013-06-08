@@ -5,6 +5,7 @@ Created on Feb 23, 2013
 '''
 import inspect
 import functools
+import threading
 import types
 
 
@@ -128,9 +129,7 @@ class ArgSpec(object):
         :param nullable: allow a null/unspecified input; sets the default to None
                          if default is not provided
         """
-        if not types_:
-            types_ = (object,)
-        self.types = types_ if not types_ else tuple(types_)
+        self.types = tuple((object,)) if not types_ else tuple(types_)
         self.name = None
         self.docs = kwargs.pop('docs', None)
         self.default = kwargs.pop('default', self.__UNSPECIFIED)
@@ -158,6 +157,74 @@ class ArgSpec(object):
         return wrapper
 
 
+class ResultObject(dict):
+    """
+    If using a result spec, the logic unit will return an instance
+    of this class. It provides handy dict and object like properties
+    with type checking.
+    """
+    def __init__(self, fields):
+        object.__setattr__(self, '_fields', fields)
+        object.__setattr__(self, '_values', {name: spec._default for name, spec in fields.iteritems()})
+
+    def __getattr__(self, name):
+        return self._values[name]
+
+    def __setattr__(self, name, value):
+        self.__setitem__(name, value)
+
+    def __setitem__(self, name, value):
+        spec = self._fields[name]
+        if not isinstance(value, spec.types):
+            raise TypeError((value, spec.types))
+        self._values[name] = value
+
+    def __getitem__(self, name):
+        return self._values[name]
+
+
+class ResultSpec(object):
+    """
+    The result counterpart to an ArgSpec. Defines the return values for a step.
+    This provides a hook for documentation and an automatically generated result map.
+    """
+    def __init__(self, *types_, **kwargs):
+        """Constructor.
+
+        :params *args: a list of python types for return value checking
+        :param docs: a description of this result
+        :param default: a default return value, values begin as none unless specified
+        """
+        self.types = tuple((object,)) if not types_ else tuple(types_)
+        self.docs = kwargs.pop('docs', None)
+        self._default = kwargs.pop('default', None)
+        if kwargs:
+            raise ValueError("unknown keywords: %s" % kwargs.keys())
+
+    def contribute_to_class(self, cls, name):
+        setattr(cls, name, self)
+        if hasattr(cls, '_result_fields'):
+            cls.__result_fields[name] = self
+            return
+        setattr(cls, '_result_fields', {name: self})
+        setattr(cls, '_results', threading.local())
+        setattr(cls, '__call__', self.manage_result(getattr(cls, '__call__')))
+        setattr(cls, 'result', property(lambda self_: self_._results.value))
+
+    def manage_result(_, func): #@NoSelf
+        @functools.wraps(func)
+        def wrapper(self, **kwargs):
+            try:
+                self._results.value = ResultObject(self._result_fields)
+                res = func(self, **kwargs)
+                if res is None:
+                    return self._results.value
+                return res
+            finally:
+                self._results.value = None
+        return wrapper
+
+
 class LogicUnit(object):
     __metaclass__ = LogicUnitBase
 
@@ -166,7 +233,8 @@ class LogicUnit(object):
 
     @classmethod
     def AutoMap(cls, overrides=None):
-        """Provides a mechanism for automatically binding like-named properties of the
+        """
+        Provides a mechanism for automatically binding like-named properties of the
         context to like named arguments to eliminate boilerplate, but possibly create
         execution time errors, if care is not taken. With great power comes great
         responsibility - Toby Miguire.
@@ -191,3 +259,13 @@ class LogicUnit(object):
                 kwargs[arg] = getattr(context, mapped_field)
             return kwargs
         return auto_map
+
+    @classmethod
+    def ResultMap(cls, ctx_cls, overrides=None):
+        spec = {}
+        for name, _ in cls._result_fields.iteritems():
+            if hasattr(ctx_cls, name):
+                spec[name] = name
+        if overrides:
+            spec.update(overrides)
+        return spec
