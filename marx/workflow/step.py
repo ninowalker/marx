@@ -152,7 +152,12 @@ class ArgSpec(object):
                     raise KeyError("Undefined argument: '%s' for '%s'" % (name, type(self).__name__))
                 kwargs[name] = self_.default
             if not isinstance(kwargs[name], self_.types):
-                raise TypeError("Incorrect argument: '%s' for '%s'. Expected: '%s'" % (name, type(self).__name__, self_.types))
+                raise TypeError("Incorrect argument: '%s' for '%s'."
+                                "Expected type '%s' but received '%s' of type '%s'." % (name,
+                                                                                       type(self).__name__,
+                                                                                       self_.types,
+                                                                                       kwargs[name],
+                                                                                       type(kwargs[name])))
             return func(self, **kwargs)
         return wrapper
 
