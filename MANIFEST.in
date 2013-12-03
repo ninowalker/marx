@@ -1,1 +1,4 @@
 include README.md.in
+include examples/*
+include tests/*
+include tests/*/*
