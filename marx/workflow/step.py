@@ -209,7 +209,7 @@ class ResultSpec(object):
     def contribute_to_class(self, cls, name):
         setattr(cls, name, self)
         if hasattr(cls, '_result_fields'):
-            cls.__result_fields[name] = self
+            cls._result_fields[name] = self
             return
         setattr(cls, '_result_fields', {name: self})
         setattr(cls, '_results', threading.local())
