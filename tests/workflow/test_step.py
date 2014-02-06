@@ -253,6 +253,18 @@ class Test(unittest.TestCase):
         assert result_1['the_cat_has_spoken']
         assert not result_2['the_cat_has_spoken']
 
+    def test_default_builder(self):
+        class Unit(LogicUnit):
+            moo = ArgSpec(str, docs="The cow goes")
+           
+            def __call__(self, moo):
+                return {'result' : moo}
+        
+        expected_result = "shooo"
+        built_unit = Unit.Builder().defaults({"moo":expected_result}).build()
+        assert built_unit()['result'] == expected_result 
+ 
+
 # don't change this name, test above depends on it.
 a_callable = Mock()
 

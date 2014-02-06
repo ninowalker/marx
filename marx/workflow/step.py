@@ -148,9 +148,12 @@ class ArgSpec(object):
     def check_input(self_, name, func):  # @NoSelf
         def wrapper(self, **kwargs):
             if name not in kwargs:
-                if self_.default == self_.__UNSPECIFIED:
+                if name in self._defaults:
+                    kwargs[name] = self._defaults[name]
+                elif self_.default == self_.__UNSPECIFIED:
                     raise KeyError("Undefined argument: '%s' for '%s'" % (name, type(self).__name__))
-                kwargs[name] = self_.default
+                else:
+                    kwargs[name] = self_.default
             if not isinstance(kwargs[name], self_.types):
                 raise TypeError("Incorrect argument: '%s' for '%s'."
                                 "Expected type '%s' but received '%s' of type '%s'." % (name,
@@ -230,9 +233,39 @@ class ResultSpec(object):
         return wrapper
 
 
+class BuilderBase(type):
+    """Use the __get__ method so that LogicUnit.Builder will return
+    a class that is customized for use in that LogicUnit (by setting
+    the `cls` property)."""
+
+    def __get__(cls, instance, owner):
+        return type('%s%s' % (owner.__name__, cls.__name__), (cls,), {'cls': owner})
+
+
+class LogicUnitBuilder(object):
+    __metaclass__ = BuilderBase
+
+    def __init__(self,):
+        if not self.cls:
+            raise AttributeError("Use Builder as a property of a LogicUnit (MyLogicUnit.Builder())")
+        self._defaults = {}
+
+    def build(self,):
+        unit = self.cls()
+        unit._defaults = self._defaults
+        return unit
+
+    def defaults(self, defaults):
+        self._defaults.update(defaults)
+        return self
+
 class LogicUnit(object):
     __metaclass__ = LogicUnitBase
+    Builder = LogicUnitBuilder
 
+    def __init__(self,):
+        self._defaults = {}    
+    
     def __call__(self):
         abstract  # @UndefinedVariable ~ this is a python guru move
 
