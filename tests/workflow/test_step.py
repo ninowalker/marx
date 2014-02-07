@@ -261,7 +261,7 @@ class Test(unittest.TestCase):
                 return {'result' : moo}
         
         expected_result = "shooo"
-        built_unit = Unit.Builder().defaults({"moo":expected_result}).build()
+        built_unit = Unit.Builder().defaults(moo=expected_result).build()
         assert built_unit()['result'] == expected_result 
  
 

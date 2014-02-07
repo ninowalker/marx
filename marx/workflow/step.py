@@ -255,8 +255,8 @@ class LogicUnitBuilder(object):
         unit._defaults = self._defaults
         return unit
 
-    def defaults(self, defaults):
-        self._defaults.update(defaults)
+    def defaults(self, **kwargs):
+        self._defaults.update(kwargs)
         return self
 
 class LogicUnit(object):
