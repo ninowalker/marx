@@ -107,7 +107,7 @@ class LogicUnitBase(type):
         # keep track of whether the invocation expects a context
         setattr(cls, '_accepts_context', 'context' in args.args)
         setattr(cls, '_args', args)
-
+        
         # let them contribute to the class
         for arg, spec in specs:
             spec.contribute_to_class(cls, arg)
@@ -148,7 +148,7 @@ class ArgSpec(object):
     def check_input(self_, name, func):  # @NoSelf
         def wrapper(self, **kwargs):
             if name not in kwargs:
-                if name in self._defaults:
+                if hasattr(self, "_defaults") and name in self._defaults:
                     kwargs[name] = self._defaults[name]
                 elif self_.default == self_.__UNSPECIFIED:
                     raise KeyError("Undefined argument: '%s' for '%s'" % (name, type(self).__name__))
