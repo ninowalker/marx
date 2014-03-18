@@ -76,7 +76,7 @@ class Step(object):
                     value = value[k]
             setattr(context, to_key, value)
 
-    def default_arg_mapper(self, context, mapping):  # @UnusedVariable
+    def default_arg_mapper(self, context, mapping): # @UnusedVariable
         kwargs = {}
         for to_kwarg, from_key in mapping.iteritems():
             kwargs[to_kwarg] = getattr(context, from_key)
@@ -134,6 +134,8 @@ class ArgSpec(object):
         self.docs = kwargs.pop('docs', None)
         self.default = kwargs.pop('default', self.__UNSPECIFIED)
         nullable = kwargs.pop('nullable', False)
+        self.normalizer = kwargs.pop('normalizer', self.default_normalizer)
+
         if nullable:
             self.types += (types.NoneType,)
             if self.default == self.__UNSPECIFIED:
@@ -145,21 +147,33 @@ class ArgSpec(object):
         call = getattr(cls, '__call__')
         setattr(cls, '__call__', self.check_input(name, call))
 
-    def check_input(self_, name, func):  # @NoSelf
+    def check_input(self_, name, func): # @NoSelf
         def wrapper(self, **kwargs):
             if name not in kwargs:
                 if self_.default == self_.__UNSPECIFIED:
                     raise KeyError("Undefined argument: '%s' for '%s'" % (name, type(self).__name__))
                 kwargs[name] = self_.default
-            if not isinstance(kwargs[name], self_.types):
-                raise TypeError("Incorrect argument: '%s' for '%s'."
-                                "Expected type '%s' but received '%s' of type '%s'." % (name,
-                                                                                       type(self).__name__,
-                                                                                       self_.types,
-                                                                                       kwargs[name],
-                                                                                       type(kwargs[name])))
+
+            kwargs[name] = self_.normalizer(name, kwargs[name], self_.types)
             return func(self, **kwargs)
         return wrapper
+
+    @classmethod
+    def default_normalizer(cls, name, value, types):
+        if not isinstance(value, types):
+            raise TypeError("Incorrect argument: '%s' for '%s'."
+                            "Expected type '%s' but received '%s' of type '%s'." % (name,
+                                                                                   cls.__name__,
+                                                                                   types,
+                                                                                   value,
+                                                                                   type(value)))
+        return value
+
+    @classmethod
+    def as_list(cls, name, value, types):
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+        return [cls.default_normalizer(name, v, types) for v in value]
 
 
 class ResultObject(dict):
@@ -216,7 +230,7 @@ class ResultSpec(object):
         setattr(cls, '__call__', self.manage_result(getattr(cls, '__call__')))
         setattr(cls, 'result', property(lambda self_: self_._results.value))
 
-    def manage_result(_, func): #@NoSelf
+    def manage_result(_, func): # @NoSelf
         @functools.wraps(func)
         def wrapper(self, **kwargs):
             try:
@@ -234,7 +248,7 @@ class LogicUnit(object):
     __metaclass__ = LogicUnitBase
 
     def __call__(self):
-        abstract  # @UndefinedVariable ~ this is a python guru move
+        abstract # @UndefinedVariable ~ this is a python guru move
 
     @classmethod
     def AutoMap(cls, overrides=None):
@@ -253,12 +267,12 @@ class LogicUnit(object):
             # populate the kwargs and include defaults
             kwargs = dict(zip(spec.args[-(len(spec.defaults or [])):], spec.defaults or []))
             for arg in spec.args[1:]:
-                if arg == 'context':  # this is special
+                if arg == 'context': # this is special
                     kwargs['context'] = context
                     continue
                 mapped_field = overrides_.get(arg, arg)
                 if not hasattr(context, mapped_field):
-                    if arg in kwargs:  # it was provided by a default value
+                    if arg in kwargs: # it was provided by a default value
                         continue
                     raise AttributeError("Context does not have field '%s'. context=%r" % (mapped_field, context))
                 kwargs[arg] = getattr(context, mapped_field)
