@@ -25,6 +25,8 @@ def hydrate_examples():
 
 hydrate_examples()
 
+#     setup_requires=['nose>=1.0', 'coverage>=3.6', 'nosexcover', 'mock'],
+
 setup(
     name="marx",
     version=__version__,
@@ -35,7 +37,6 @@ setup(
     license="BSD",
     packages=find_packages(exclude=["tests.*", "tests"]),
     long_description=read(README),
-    setup_requires=['nose>=1.0', 'coverage==3.6', 'nosexcover', 'mock'],
     test_suite='nose.collector',
     classifiers=[
         "License :: OSI Approved :: BSD License",
