@@ -28,7 +28,7 @@ hydrate_examples()
 #     setup_requires=['nose>=1.0', 'coverage>=3.6', 'nosexcover', 'mock'],
 
 setup(
-    name="marx",
+    name="marx-workflows",
     version=__version__,
     author="Nino Walker",
     author_email="nino.walker@gmail.com",
